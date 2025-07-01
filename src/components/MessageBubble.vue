@@ -68,6 +68,7 @@ const formattedTime = computed(() => {
   background-color: var(--color-secondary);
   color: #fff;
   border-bottom-right-radius: 4px;
+  margin-left: auto;
 }
 
 .message-ai .message-content {

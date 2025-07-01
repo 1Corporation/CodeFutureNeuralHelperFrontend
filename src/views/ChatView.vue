@@ -1,8 +1,9 @@
 <template>
   <div class="chat-container">
     <header class="chat-header">
-      <h1>Нейро-Чат</h1>
-      <p>Общение с искусственным интеллектом</p>
+      <h1>Помощник от Кода Будущего от 1С</h1>
+      <p>Перепроверяйте ответы от нейросети, помощник существует исключительно для справки. Если останутся вопросы,
+        перейдите в <a href="https://t.me/party_notificaton_codefuture_bot">чат-бот</a> с живым человеком</p>
     </header>
 
     <div class="chat-messages" ref="messagesContainer">
@@ -12,11 +13,11 @@
       </div>
 
       <transition-group name="message-fade">
-        <message-bubble 
-          v-for="(message, index) in messages" 
-          :key="index"
-          :message="message"
-          :isLast="index === messages.length - 1"
+        <message-bubble
+            v-for="(message, index) in messages"
+            :key="index"
+            :message="message"
+            :isLast="index === messages.length - 1"
         />
       </transition-group>
 
@@ -26,18 +27,18 @@
     </div>
 
     <div class="chat-input-container">
-      <textarea 
-        v-model="userInput" 
-        class="chat-input" 
-        placeholder="Введите сообщение..." 
-        @keydown.enter.prevent="sendMessage"
-        :disabled="isLoading"
-        ref="inputField"
+      <textarea
+          v-model="userInput"
+          class="chat-input"
+          placeholder="Введите сообщение..."
+          @keydown.enter.prevent="sendMessage"
+          :disabled="isLoading"
+          ref="inputField"
       ></textarea>
-      <button 
-        class="send-button btn btn-primary" 
-        @click="sendMessage" 
-        :disabled="isLoading || !userInput.trim()"
+      <button
+          class="send-button btn btn-primary"
+          @click="sendMessage"
+          :disabled="isLoading || !userInput.trim()"
       >
         <span class="send-icon">➤</span>
       </button>
@@ -46,9 +47,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue';
+import {ref, onMounted, watch, nextTick} from 'vue';
 import MessageBubble from '../components/MessageBubble.vue';
-import { sendMessageToAI } from '../services/apiService';
+import {getChatHistory, sendMessageToAI} from '../services/apiService';
+import {useWebSockets} from "../services/websockets.js";
 
 // Состояние чата
 const messages = ref([]);
@@ -56,6 +58,20 @@ const userInput = ref('');
 const isLoading = ref(false);
 const messagesContainer = ref(null);
 const inputField = ref(null);
+
+
+// Получить query params из запроса
+const getQueryParams = () => {
+  const search = window.location.search;
+  return Object.fromEntries(new URLSearchParams(search));
+};
+
+// Достаю параметры из запроса
+const queryParams = getQueryParams();
+const student_id = queryParams.student_id;
+const course = queryParams.course;
+const timetable = queryParams.timetable;
+const full_name = queryParams.full_name;
 
 // Метод для создания сообщения от пользователя
 const createUserMessage = (text) => {
@@ -77,8 +93,18 @@ const createAIMessage = (text) => {
   };
 };
 
+
+// Вызовется в websocket.js, после того как на websocket придет ответ
+const onAnswerReceive = (text) => {
+  const message = createAIMessage(text);
+  messages.value.push(message);
+  isLoading.value = false;
+  scrollToBottom()
+}
+
 // Метод для отправки сообщения
 const sendMessage = async () => {
+
   const text = userInput.value.trim();
   if (!text || isLoading.value) return;
 
@@ -95,13 +121,9 @@ const sendMessage = async () => {
 
   try {
     // Отправляем запрос к API нейросети
-    const response = await sendMessageToAI(text);
+    await sendMessageToAI(text, student_id);
 
-    // Создаем ответ от ИИ
-    const aiResponse = createAIMessage(response.text);
-    messages.value.push(aiResponse);
-    isLoading.value = false;
-    scrollToBottom();
+    useWebSockets(student_id, onAnswerReceive);
   } catch (error) {
     console.error('Ошибка при получении ответа:', error);
     isLoading.value = false;
@@ -113,6 +135,7 @@ const sendMessage = async () => {
   }
 };
 
+
 // Прокрутка чата вниз
 const scrollToBottom = async () => {
   await nextTick();
@@ -120,6 +143,7 @@ const scrollToBottom = async () => {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
   }
 };
+
 
 // Следим за изменениями в сообщениях и прокручиваем вниз
 watch(messages, () => {
@@ -133,9 +157,28 @@ onMounted(() => {
     inputField.value.focus();
   }
 
-  // Добавляем приветственное сообщение
   const welcomeMessage = createAIMessage('Привет! Я нейросеть. Чем я могу помочь вам сегодня?');
   messages.value.push(welcomeMessage);
+
+  getChatHistory(student_id, full_name, course, timetable).then(chat_history => {
+
+    for (const message of chat_history) {
+      console.log(message)
+      const role = message.role;
+      const text = message.text;
+
+      let message_object
+
+      if (role === 'student') {
+        message_object = createUserMessage(text);
+      } else {
+        message_object = createAIMessage(text);
+      }
+
+      messages.value.push(message_object);
+    }
+    scrollToBottom();
+  })
 });
 </script>
 
@@ -230,27 +273,57 @@ onMounted(() => {
 }
 
 @keyframes dot-pulse-before {
-  0% { opacity: 0.4; }
-  25% { opacity: 1; }
-  50% { opacity: 0.4; }
-  75% { opacity: 0.4; }
-  100% { opacity: 0.4; }
+  0% {
+    opacity: 0.4;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  75% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes dot-pulse {
-  0% { opacity: 0.4; }
-  25% { opacity: 0.4; }
-  50% { opacity: 1; }
-  75% { opacity: 0.4; }
-  100% { opacity: 0.4; }
+  0% {
+    opacity: 0.4;
+  }
+  25% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes dot-pulse-after {
-  0% { opacity: 0.4; }
-  25% { opacity: 0.4; }
-  50% { opacity: 0.4; }
-  75% { opacity: 1; }
-  100% { opacity: 0.4; }
+  0% {
+    opacity: 0.4;
+  }
+  25% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
 }
 
 .chat-input-container {

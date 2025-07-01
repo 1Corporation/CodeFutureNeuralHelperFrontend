@@ -1,122 +1,69 @@
 /**
  * Сервис для взаимодействия с API нейросети
- * 
+ *
  * Этот файл содержит заглушки методов, которые вы можете реализовать для
  * подключения к вашему серверу нейросети.
  */
 
 // Базовый URL API (замените на свой)
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 /**
  * Отправка сообщения нейросети и получение ответа
- * @param {string} message - Текст сообщения пользователя
- * @param {string} [conversationId] - ID текущей беседы (если поддерживается)
+ * @param message текст сообщения
+ * @param student_id student_id
  * @returns {Promise<Object>} - Ответ нейросети
  */
-export const sendMessageToAI = async (message, conversationId = null) => {
-  try {
-    // Здесь должен быть ваш код для отправки запроса к серверу
-    // Это пример структуры:
-
-    /*
-    const response = await fetch(`${API_BASE_URL}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        conversationId
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ошибка API: ${response.status}`);
-    }
-
-    return await response.json();
-    */
-
-    // Заглушка для примера (замените своей реализацией)
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          text: 'Это ответ-заглушка от API. Замените эту функцию на реальный запрос к вашему серверу.',
-          conversationId: conversationId || 'new-conversation-123'
+export const sendMessageToAI = async (message, student_id) => {
+    try {
+        // Это пример структуры:
+        const response = await fetch(`${API_BASE_URL}/receive_message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: message,
+            student_id: student_id,
+          }),
         });
-      }, 1000);
-    });
-  } catch (error) {
-    console.error('Ошибка при отправке сообщения:', error);
-    throw error;
-  }
+
+        if (!response.ok) {
+          throw new Error(`Ошибка API: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Ошибка при отправке сообщения:', error);
+        throw error;
+    }
 };
 
 /**
  * Получение истории сообщений для указанной беседы
- * @param {string} conversationId - ID беседы
+ * @param student_id УНТИ СТУДЕНТА
+ * @param full_name ФИО студента
+ * @param course название курса на котором обучается студент (element|python)
+ * @param timetable расписание ученика TODO:Уточните формат в котором отправляется расписание
  * @returns {Promise<Array>} - История сообщений
  */
-export const getChatHistory = async (conversationId) => {
-  try {
-    // Здесь должен быть ваш код для получения истории сообщений
-    // Пример структуры:
+export const getChatHistory = async (student_id, full_name, course, timetable) => {
+    try {
+        // Пример структуры:
 
-    /*
-    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
+        const response = await fetch(
+            `${API_BASE_URL}/get_chat_history?student_id=${student_id}&full_name=${full_name}&course=${course}&timetable=${timetable}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
 
-    if (!response.ok) {
-      throw new Error(`Ошибка API: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`Ошибка API: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка при отправке сообщения:', error);
+        throw error;
     }
-
-    return await response.json();
-    */
-
-    // Заглушка для примера
-    return [];
-  } catch (error) {
-    console.error('Ошибка при получении истории чата:', error);
-    throw error;
-  }
-};
-
-/**
- * Создание новой беседы
- * @returns {Promise<Object>} - Информация о новой беседе
- */
-export const createNewConversation = async () => {
-  try {
-    // Здесь должен быть ваш код для создания новой беседы
-    // Пример структуры:
-
-    /*
-    const response = await fetch(`${API_BASE_URL}/conversations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Ошибка API: ${response.status}`);
-    }
-
-    return await response.json();
-    */
-
-    // Заглушка для примера
-    return {
-      id: `conv-${Date.now()}`,
-      createdAt: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error('Ошибка при создании новой беседы:', error);
-    throw error;
-  }
 };
